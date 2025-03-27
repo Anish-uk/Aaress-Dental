@@ -6,6 +6,8 @@ import Link from "next/link";
 export default function HomePage() {
   const [customers, setCustomers] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [callAllLoading, setCallAllLoading] = useState(false);
+  const [callAllResult, setCallAllResult] = useState(null);
 
   // Fetch customer records from your Airtable endpoint
   useEffect(() => {
@@ -25,6 +27,24 @@ export default function HomePage() {
     fetchCustomerRecords();
   }, []);
 
+  const handleCallAll = async () => {
+    setCallAllLoading(true);
+    setCallAllResult(null);
+    try {
+      const res = await fetch("/api/callCustomer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // No phone provided means all customers will be called
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      setCallAllResult(data);
+    } catch (error) {
+      setCallAllResult({ error: error.message });
+    }
+    setCallAllLoading(false);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
@@ -32,16 +52,21 @@ export default function HomePage() {
         <h1 className="text-4xl font-bold text-center text-gray-800 mb-8">
           Aaress Dental Clinic - Customer Feedback
         </h1>
+        <div className="flex justify-center mb-8">
+          <button
+            onClick={handleCallAll}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            disabled={callAllLoading}
+          >
+            {callAllLoading ? "Calling All..." : "Call All Customers"}
+          </button>
+        </div>
         {loadingData ? (
           <p className="text-center">Loading customers...</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {customers.map((customer) => (
-              <CustomerCard
-                key={customer.id}
-                id={customer.id}
-                customer={customer.fields}
-              />
+              <CustomerCard key={customer.id} customer={customer.fields} />
             ))}
           </div>
         )}
@@ -85,7 +110,7 @@ function Footer() {
   );
 }
 
-function CustomerCard({ customer, id }) {
+function CustomerCard({ customer }) {
   const [callLoading, setCallLoading] = useState(false);
   const [callResult, setCallResult] = useState(null);
 
@@ -95,11 +120,8 @@ function CustomerCard({ customer, id }) {
     try {
       const res = await fetch("/api/callCustomer", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerId: id,
           phone: customer.PhoneNumber,
           name: customer.Name,
         }),

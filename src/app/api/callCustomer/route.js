@@ -2,6 +2,8 @@
 import Airtable from "airtable";
 
 export async function POST(req) {
+  const { phone } = await req.json();
+
   // Initialize Airtable with API key and base ID from environment variables
   const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
     process.env.AIRTABLE_BASE_ID
@@ -9,17 +11,20 @@ export async function POST(req) {
 
   let customers;
   try {
-    // Fetch records from "Customer" table with empty Feedback field
+    // Use a specific filter if a phone is provided, else fetch customers with empty Feedback
+    let filterFormula = "{Feedback} = ''";
+    if (phone) {
+      filterFormula = `{PhoneNumber} = '${phone}'`;
+    }
+
     const records = await base("Customer")
       .select({
         fields: ["PhoneNumber", "Name", "Feedback"],
-        filterByFormula: '{Feedback} = ""',
+        filterByFormula: filterFormula,
       })
       .all();
 
-    // Map records into a simplified customer object
     customers = records.map((record) => ({
-      id: record.id,
       phone: record.fields.PhoneNumber,
       name: record.fields.Name || "Unnamed Customer",
     }));
@@ -38,7 +43,6 @@ export async function POST(req) {
 
   // For each customer, make a POST request to Vapi to initiate a call
   for (const customer of customers) {
-    // Construct the payload for the Vapi API call
     const payload = {
       assistantId: "0882b608-4d88-4ce3-8b1a-02258db31041",
       customer: { number: customer.phone },
@@ -63,21 +67,21 @@ export async function POST(req) {
       if (!res.ok) {
         const errorText = await res.text();
         callResults.push({
-          customerId: customer.id,
+          phone: customer.phone,
           status: "failed",
           error: errorText,
         });
       } else {
         const callData = await res.json();
         callResults.push({
-          customerId: customer.id,
+          phone: customer.phone,
           status: "success",
           call: callData,
         });
       }
     } catch (error) {
       callResults.push({
-        customerId: customer.id,
+        phone: customer.phone,
         status: "failed",
         error: error.message,
       });
