@@ -48,8 +48,8 @@ export async function POST(req) {
       customer: { number: customer.phone },
       name: "aaress Dental Feedback", // Must be ≤40 characters
       phoneNumber: {
-        twilioAccountSid: "AC8d658708b307fd9065b92917d17b7cb9",
-        twilioAuthToken: "541cd7c8c38930b9ac7b5caea81dc433",
+        twilioAccountSid: process.env.TWILIO_SID,
+        twilioAuthToken: process.env.TWILIO_AUTH_TOKEN,
         twilioPhoneNumber: "+19706605512",
       },
     };
